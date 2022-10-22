@@ -1,0 +1,159 @@
+buildscript {
+    repositories {
+        maven { url = 'https://maven.minecraftforge.net/' }
+        //maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+', changing: true
+        //classpath group: 'gradle.plugin.com.github.johnrengelman', name: 'shadow', version: '7.1.2'
+        //classpath group: 'org.spongepowered', name: 'mixingradle', version: '0.7-SNAPSHOT'
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle'
+//apply plugin: 'org.spongepowered.mixin'
+//apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'maven-publish'
+
+version = '1.12.2-1.0'		//including the minecraft version in the version of the mod is generally good practice
+group = 'rename.folder.modid'
+archivesBaseName = 'modid'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(8)	//forces the buildscript to use Java 8
+
+minecraft {
+    mappings channel: 'snapshot', version: '20171003-1.12'	//TODO switch to stable_39
+    //accessTransformer = file('src/main/resources/META-INF/modid_at.cfg')
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
+            property 'forge.logging.console.level', 'debug'
+        }
+
+        server {
+            property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
+            property 'forge.logging.console.level', 'debug'
+        }
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+    maven {
+        url = uri("https://www.cursemaven.com")		//This is the curseforge maven so you can use curseforge mods as dependencies
+        content {
+            includeGroup "curse.maven"
+        }
+    }
+    //maven {
+        //url = uri("https://maven.blamejared.com")		This is the crafttweaker maven. It also has gamestages and bookshelf
+    //}
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }	//1.12.2 fix for broken resource thing that fancygradle fixes
+
+/*Refmap for mixin stuff
+sourceSets {
+    main {
+        ext.refMap = "mixins.modid.refmap.json"
+    }
+}
+*/
+
+/*This is needed if you want to shade stuff
+configurations {
+    shade
+    implementation.extendsFrom(shade)
+    shadow.extendsFrom shade
+}
+*/
+
+dependencies {
+    //minecraft
+    minecraft "net.minecraftforge:forge:1.12.2-14.23.5.2860"
+
+    //external dependencies
+
+    //libraries that need to be included and relocated
+
+    //mixin
+    //implementation('org.spongepowered:mixin:0.8.4')
+
+    //required mod dependencies
+    //implementation fg.deobf("curse.maven:mixin-booter-419286:3886235")
+
+    //mod support dependencies
+    //implementation fg.deobf("curse.maven:jei-238222:3488178")
+}
+
+/*This is needed if you want to shade stuff
+shadowJar {
+    //necessary relocation
+    
+    //not strictly necessary relocation
+    
+    configurations = [project.configurations.shadow]
+    classifier ''
+}
+*/
+
+/*This is needed if you want to shade stuff
+reobf {
+    shadowJar {
+        dependsOn createMcpToSrg
+        mappings = createMcpToSrg.output
+    }
+}
+*/
+processResources {
+    filesMatching("mcmod.info") {
+        expand "version": project.version, "mcversion": "1.12.2"
+    }
+    inputs.property "version", project.version
+    inputs.property "mcversion", "1.12.2"
+}
+
+/*This is specific to 1.12.2 when using mixin booter
+mixin {
+    disableAnnotationProcessorCheck()
+}
+*/
+
+jar {
+    manifest {
+        attributes([
+            //"FMLAT": "modid_at.cfg",
+            "Specification-Title": "modid",
+            "Specification-Vendor": "author",
+            "Specification-Version": project.version,
+            "Implementation-Title": project.name,
+            "Implementation-Version": project.version,
+            "Implementation-Vendor" :"modid",
+            "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}
+
+/*This is needed if you want to shade stuff
+jar.finalizedBy('reobfJar')
+*/
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifact jar
+        }
+    }
+    repositories {
+        maven {
+            url "file:///${project.projectDir}/mcmodsrepo"
+        }
+    }
+}
+/*This is needed if you want to shade stuff
+tasks.assemble.dependsOn shadowJar
+ */

@@ -1,0 +1,9 @@
+{
+  "required": false,
+  "package": "rename.folder.modid.mixin",
+  "refmap": "mixins.modid.refmap.json",
+  "minVersion": "0.8",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [],
+  "client": []
+}
