@@ -1,159 +1,230 @@
-buildscript {
-    repositories {
-        maven { url = 'https://maven.minecraftforge.net/' }
-        //maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
-        mavenCentral()
-        gradlePluginPortal()
-    }
-    dependencies {
-        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+', changing: true
-        //classpath group: 'gradle.plugin.com.github.johnrengelman', name: 'shadow', version: '7.1.2'
-        //classpath group: 'org.spongepowered', name: 'mixingradle', version: '0.7-SNAPSHOT'
+//file:noinspection GroovyAssignabilityCheck
+
+
+/**
+ * Plugin repositories can be found in the settings.gradle file. If you need to use the Shadow plugin you can uncomment
+ * it, just make sure it is only being used when necessary for a 3rd party library which isn't a mod that can be easily
+ * downloaded otherwise.
+ */
+plugins {
+    id 'net.minecraftforge.gradle' version '6.0.+'
+    id 'wtf.gofancy.fancygradle' version '1.1.+'
+    id 'org.spongepowered.mixin' version '0.7.+'
+    //id 'com.github.johnrengelman.shadow' version '8.1.+'
+}
+
+
+/**
+ * Note that FancyGradle technically might not be necessary in FG 6 anymore but I have it just in case it doesn't cover
+ * everything. The codeChickenLib patch is needed if you have CodeChickenLib as an implemented or runtime dependency, so
+ * feel free to uncomment or remove it as needed
+ */
+fancyGradle {
+    patches {
+        resources
+        coremods
+        //codeChickenLib
+        asm
+        mergetool
     }
 }
 
-apply plugin: 'net.minecraftforge.gradle'
-//apply plugin: 'org.spongepowered.mixin'
-//apply plugin: 'com.github.johnrengelman.shadow'
-apply plugin: 'maven-publish'
+/**
+ * For version sanity, all version numbers and project names/groups are in the gradle.properties file.
+ * Note that something like `project.mod_version` evaluates to the same thing as `mod_version` which is why you might
+ * see those 2 formats being used interchangeably. The longer one feel more "proper" but IntelliJ complains about
+ * assignability issues sometimes so that's why the shorter one is also used.
+ */
+version = "${project.minecraft_version}-${project.mod_version}"
+group = project.maven_group
+archivesBaseName = project.base_name
 
-version = '1.12.2-1.0'		//including the minecraft version in the version of the mod is generally good practice
-group = 'rename.folder.modid'
-archivesBaseName = 'modid'
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(8)	//forces the buildscript to use Java 8
+/**
+ * This is 1.12.2 so we want to make sure gradle knows we are building and compiling using Java 8.
+ */
+java.toolchain.getLanguageVersion().set(JavaLanguageVersion.of(8))
 
+
+/**
+ * If you need to use an accessTransformer just uncomment it and replace the modid.
+ * The args are for logging additional debug information for mixins and are the same args used by mixinbooter runs
+ */
 minecraft {
-    mappings channel: 'snapshot', version: '20171003-1.12'	//TODO switch to stable_39
+    mappings channel: 'stable', version: mappings_version
     //accessTransformer = file('src/main/resources/META-INF/modid_at.cfg')
     runs {
+        def args = [
+                '-Dmixin.debug.export=true',
+                '-Dmixin.hotSwap=true',
+                '-Dmixin.checks.interfaces=true'
+        ]
         client {
-            workingDirectory project.file('run')
+            workingDirectory file('run')
             property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
             property 'forge.logging.console.level', 'debug'
+            jvmArgs args
         }
 
         server {
             property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
             property 'forge.logging.console.level', 'debug'
+            jvmArgs args
         }
     }
 }
 
+
+/**
+ * The repositories here are for the dependencies. Sponge is included again here since it's needed for the annotation
+ * processor and it uses a different resolution strategy than the mixingradle plugin.
+ */
 repositories {
-    google()
-    mavenCentral()
     maven {
-        url = uri("https://www.cursemaven.com")		//This is the curseforge maven so you can use curseforge mods as dependencies
+        name = 'CurseForge'
+        url = uri('https://www.cursemaven.com')
         content {
-            includeGroup "curse.maven"
+            includeGroup 'curse.maven'
         }
     }
-    //maven {
-        //url = uri("https://maven.blamejared.com")		This is the crafttweaker maven. It also has gamestages and bookshelf
-    //}
-}
-
-sourceSets.main.resources { srcDir 'src/generated/resources' }	//1.12.2 fix for broken resource thing that fancygradle fixes
-
-/*Refmap for mixin stuff
-sourceSets {
-    main {
-        ext.refMap = "mixins.modid.refmap.json"
+    maven {
+        name = 'Modrinth'
+        url = uri('https://api.modrinth.com/maven')
+        content {
+            includeGroup 'maven.modrinth'
+        }
+    }
+    maven {
+        name = 'Sponge'
+        url = uri('https://repo.spongepowered.org/maven')
+    }
+    /**
+     * Jitpack is a maven that allows you to import dependencies directly from GitHub. It is used in the Shadow plugin
+     * example for the cloning library. Feel free to remove it.
+     */
+    maven {
+        name = 'GitHub'
+        url = uri('https://jitpack.io')
     }
 }
-*/
 
-/*This is needed if you want to shade stuff
-configurations {
-    shade
-    implementation.extendsFrom(shade)
-    shadow.extendsFrom shade
-}
-*/
 
+/**
+ * For ease of access, here is a shade configuration. This is only needed when you want to use the shadow plugin to
+ * include a 3rd party library that isn't a mod. Don't use it to shade other mods unless they explicitly allow it since
+ * you could run into licensing issues and unnecessarily duplicated code in modpacks.
+ */
+//configurations {
+//    shade
+//    implementation.extendsFrom shade
+//    shadow.extendsFrom shade
+//}
+
+
+/**
+ * This is where you add all of you dependencies. Remember to use the gradle.properties file for sane version control.
+ * The shaded dependencies section has an example of how to use the Shadow plugin with the above configuration and can
+ * be removed if that is not planned on being used.
+ */
 dependencies {
-    //minecraft
-    minecraft "net.minecraftforge:forge:1.12.2-14.23.5.2860"
+    //Minecraft
+    minecraft("net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}")
 
-    //external dependencies
+    //Mixin
+    implementation(fg.deobf("maven.modrinth:mixinbooter:${project.mixinbooter_version}"))
+    annotationProcessor("org.spongepowered:mixin:${project.mixin_version}:processor")
 
-    //libraries that need to be included and relocated
+    //Shaded `shade`
+    //shade("io.github.kostaskougios:cloning:${project.cloning_version}")
 
-    //mixin
-    //implementation('org.spongepowered:mixin:0.8.4')
+    //Implemented `implementation`
+    implementation("io.github.kostaskougios:cloning:${project.cloning_version}")
 
-    //required mod dependencies
-    //implementation fg.deobf("curse.maven:mixin-booter-419286:3886235")
+    //Compile Only `compileOnly`
 
-    //mod support dependencies
-    //implementation fg.deobf("curse.maven:jei-238222:3488178")
+    //Runtime Only `runtimeOnly`
+    runtimeOnly(fg.deobf("curse.maven:caliper-266824:${project.caliper_version}"))
+    runtimeOnly(fg.deobf("curse.maven:had-enough-items-557549:${project.hei_version}"))
+    runtimeOnly(fg.deobf("curse.maven:the-one-probe-245211:${project.top_version}"))
 }
 
-/*This is needed if you want to shade stuff
-shadowJar {
-    //necessary relocation
-    
-    //not strictly necessary relocation
-    
-    configurations = [project.configurations.shadow]
-    classifier ''
-}
-*/
 
-/*This is needed if you want to shade stuff
-reobf {
-    shadowJar {
-        dependsOn createMcpToSrg
-        mappings = createMcpToSrg.output
-    }
-}
-*/
+/**
+ * The shadowJar task is only needed when the Shadow plugin is in use. Also regarding the relocate task, some class
+ * paths and packages need to be relocated if you are shading a dependency that is transitive or if another
+ * mod is shading the same dependency. SLJ4 relocation is provided as an example, but it's usually good practice to
+ * excluded Minecraft or Forge libraries from transitive dependencies so you dont
+ */
+//shadowJar {
+//    relocate 'org.slf4j', "${shadow_group}.slf4j"
+//    configurations = [project.configurations.shadow]
+//    setArchiveClassifier('')
+//    mergeServiceFiles()
+//}
+
+
+/**
+ * The reobf task is only needed when the Shadow plugin is in use.
+ */
+//reobf {
+//    shadowJar {
+//        dependsOn createMcpToSrg
+//        mappings = createMcpToSrg.output
+//    }
+//}
+
+
+/**
+ * The duplicatesStrategy here won't give you duplicate `mcmod.info` files when building, it's just needed for running
+ * client/server tests.
+ */
 processResources {
-    filesMatching("mcmod.info") {
-        expand "version": project.version, "mcversion": "1.12.2"
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    inputs.property 'version', project.version
+    inputs.property 'mcversion', minecraft_version
+    from(sourceSets.main.resources.srcDirs) {
+        include 'mcmod.info'
+        expand 'version': project.version, 'mcversion': minecraft_version
     }
-    inputs.property "version", project.version
-    inputs.property "mcversion", "1.12.2"
+    from(sourceSets.main.resources.srcDirs) {
+        exclude 'mcmod.info'
+    }
 }
 
-/*This is specific to 1.12.2 when using mixin booter
+
+/**
+ * Make sure to change the modid here and have it match the refmap name in your mixin file(s)
+ */
 mixin {
-    disableAnnotationProcessorCheck()
+    add sourceSets.main, 'modid.refmap.json'
 }
-*/
 
+
+/**
+ * Make sure to change the `packagename`, `author`, and `modid` references. The FMLAT line should be uncommented if you
+ * are using an access transformers. Also since any implementation `IEarlyMixinLoader` needs to be loaded during the
+ * coremod phase, you need that class or the class that loads it to be an implementation of IFMLLoadingPlugin which
+ * should also be listed here as `FMLCorePlugin`. `FMLCorePluginContainsFMLMod` and `ForceLoadAsMod` are needed to
+ * ensure Forge loads the main mod properly despite have a core plugin.
+ */
 jar {
     manifest {
         attributes([
-            //"FMLAT": "modid_at.cfg",
-            "Specification-Title": "modid",
-            "Specification-Vendor": "author",
-            "Specification-Version": project.version,
-            "Implementation-Title": project.name,
-            "Implementation-Version": project.version,
-            "Implementation-Vendor" :"modid",
-            "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+                'Specification-Version': project.version,
+                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                //'FMLAT': 'modid_at.cfg'
+                'FMLCorePlugin': 'packagename.author.modid.core.EarlyMixinPlugin',
+                'FMLCorePluginContainsFMLMod': true,
+                'ForceLoadAsMod': true
         ])
     }
 }
 
-/*This is needed if you want to shade stuff
-jar.finalizedBy('reobfJar')
-*/
 
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            artifact jar
-        }
-    }
-    repositories {
-        maven {
-            url "file:///${project.projectDir}/mcmodsrepo"
-        }
-    }
-}
-/*This is needed if you want to shade stuff
-tasks.assemble.dependsOn shadowJar
+/**
+ * These let the shadowJar task run at the correct time when the project is being built. They can be removed if the
+ * Shadow plugin is not being used
  */
+//tasks.assemble.dependsOn('shadowJar')
+//tasks.shadowJar.dependsOn('reobfJar')
+//tasks.jar.finalizedBy('reobfJar')
