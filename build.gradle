@@ -143,6 +143,7 @@ dependencies {
     //Compile Only `compileOnly`
 
     //Runtime Only `runtimeOnly`
+    runtimeOnly(fg.deobf("curse.maven:bookshelf-228525:${project.bookshelf_version}"))
     runtimeOnly(fg.deobf("curse.maven:caliper-266824:${project.caliper_version}"))
     runtimeOnly(fg.deobf("curse.maven:had-enough-items-557549:${project.hei_version}"))
     runtimeOnly(fg.deobf("curse.maven:the-one-probe-245211:${project.top_version}"))
