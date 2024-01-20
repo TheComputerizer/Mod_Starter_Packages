@@ -5,10 +5,9 @@ import org.apache.logging.log4j.LogManager;
 import zone.rong.mixinbooter.IEarlyMixinLoader;
 
 import javax.annotation.Nullable;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @SuppressWarnings("unused")
 public class EarlyMixinPlugin implements IFMLLoadingPlugin, IEarlyMixinLoader {
@@ -19,7 +18,7 @@ public class EarlyMixinPlugin implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     @Override
     public List<String> getMixinConfigs() {
-        return Stream.of("modid.mixin.json").collect(Collectors.toList());
+        return Collections.singletonList("modid.mixin.json");
     }
 
     @Override
