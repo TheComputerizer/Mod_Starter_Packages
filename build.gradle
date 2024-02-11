@@ -35,9 +35,8 @@ fancyGradle {
  * see those 2 formats being used interchangeably. The longer one feel more "proper" but IntelliJ complains about
  * assignability issues sometimes so that's why the shorter one is also used.
  */
-version = "${project.minecraft_version}-${project.mod_version}"
-group = project.maven_group
-archivesBaseName = project.base_name
+version = "${project.mod_version}+${project.minecraft_version}"
+group = project.base_package
 
 
 /**
@@ -78,6 +77,8 @@ minecraft {
 /**
  * The repositories here are for the dependencies. Sponge is included again here since it's needed for the annotation
  * processor and it uses a different resolution strategy than the mixingradle plugin.
+ * Note that it is important to make sure your most used repositories are at the top and that you remove any
+ * repositories that are not in use. Unused or incorrectly ordered dependencies can slow down your build times by a lot.
  */
 repositories {
     maven {
@@ -88,14 +89,7 @@ repositories {
         }
     }
     maven {
-        name = 'Modrinth'
-        url = uri('https://api.modrinth.com/maven')
-        content {
-            includeGroup 'maven.modrinth'
-        }
-    }
-    maven {
-        name = 'Sponge'
+        name = 'SpongePowered'
         url = uri('https://repo.spongepowered.org/maven')
     }
     /**
@@ -125,14 +119,19 @@ repositories {
  * This is where you add all of you dependencies. Remember to use the gradle.properties file for sane version control.
  * The shaded dependencies section has an example of how to use the Shadow plugin with the above configuration and can
  * be removed if that is not planned on being used.
+ *
  */
 dependencies {
     //Minecraft
     minecraft("net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}")
 
     //Mixin
-    implementation(fg.deobf("maven.modrinth:mixinbooter:${project.mixinbooter_version}"))
-    annotationProcessor("org.spongepowered:mixin:${project.mixin_version}:processor")
+    annotationProcessor("com.google.code.gson:gson:${project.gson_annotation}")
+    annotationProcessor("com.google.guava:guava:${project.guava_annotation}")
+    annotationProcessor("org.ow2.asm:asm-debug-all:${project.asm_debug_annotation}")
+    annotationProcessor("org.spongepowered:mixin:${mixin_version}:processor") {
+        transitive = false
+    }
 
     //Shaded `shade`
     //shade("io.github.kostaskougios:cloning:${project.cloning_version}")
@@ -146,6 +145,7 @@ dependencies {
     runtimeOnly(fg.deobf("curse.maven:bookshelf-228525:${project.bookshelf_version}"))
     runtimeOnly(fg.deobf("curse.maven:caliper-266824:${project.caliper_version}"))
     runtimeOnly(fg.deobf("curse.maven:had-enough-items-557549:${project.hei_version}"))
+    runtimeOnly(fg.deobf("curse.maven:mixinbootstrap-357178:${project.bootstrap_version}"))
     runtimeOnly(fg.deobf("curse.maven:the-one-probe-245211:${project.top_version}"))
 }
 
@@ -197,26 +197,28 @@ processResources {
  * Make sure to change the modid here and have it match the refmap name in your mixin file(s)
  */
 mixin {
-    add sourceSets.main, 'modid.refmap.json'
+    add sourceSets.main, refmap_name
 }
 
 
 /**
  * Make sure to change the `packagename`, `author`, and `modid` references. The FMLAT line should be uncommented if you
- * are using an access transformers. Also since any implementation `IEarlyMixinLoader` needs to be loaded during the
- * coremod phase, you need that class or the class that loads it to be an implementation of IFMLLoadingPlugin which
+ * are using an access transformers. Also since all vanilla mixins need to be loaded during the coremod phase, you need
+ * that class or the class that loads it to be an implementation of IFMLLoadingPlugin which
  * should also be listed here as `FMLCorePlugin`. `FMLCorePluginContainsFMLMod` and `ForceLoadAsMod` are needed to
- * ensure Forge loads the main mod properly despite have a core plugin.
+ * ensure Forge loads the main mod properly despite have a core plugin. `TweakClass` ensures that the listed class
+ * will be loaded before the plugin does. In this case, we want to make sure the mixin is library is initialized
+ * before we try to queue any configurations for it.
  */
 jar {
+    archiveBaseName = mod_id
     manifest {
         attributes([
-                'Specification-Version': project.version,
-                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-                //'FMLAT': 'modid_at.cfg'
-                'FMLCorePlugin': 'packagename.author.modid.core.EarlyMixinPlugin',
+                //'FMLAT': 'modid_at.cfg',
+                'FMLCorePlugin': "${base_package}.${plugin_class}",
                 'FMLCorePluginContainsFMLMod': true,
-                'ForceLoadAsMod': true
+                'ForceLoadAsMod': true,
+                'TweakClass': tweak_class
         ])
     }
 }
